@@ -32,7 +32,7 @@ let GAME_SESSION = {
   TIMER_ID: null,
   TIMER_INTERVAL: 0,
   MINES_PLANTED: 0,
-  FLAGS_PLANTED: 0,
+  FLAGS_PLANTED: [],
   TILES_REVEALED: [],
 };
 
@@ -66,7 +66,7 @@ function _gridCleanUp() {
   let { mines } = GAME_SESSION.MODE_SELECTED;
   GAME_SESSION.MINES_PLANTED = mines;
   GAME_SESSION.TILES_REVEALED = [];
-  GAME_SESSION.FLAGS_PLANTED = 0;
+  GAME_SESSION.FLAGS_PLANTED = [];
   let grid = GAME_ENTITIES.getCanvas();
   grid.innerHTML = '';
   updateMinesCounter();
@@ -204,7 +204,13 @@ function _getTileStatuses(tile) {
       nearMines++;
     }
   });
-  return { isFlagged, isHidden, isMined, nearMines };
+  let nearFlags = 0;
+  _getNeighbors(tile).forEach(neighbor => {
+    if (neighbor && GAME_SESSION.FLAGS_PLANTED.includes(neighbor.id)) {
+      nearFlags++;
+    }
+  });
+  return { isFlagged, isHidden, isMined, nearMines, nearFlags };
 }
 function gameOver() {
   GAME_SESSION.STARTED = false;
@@ -268,8 +274,8 @@ function handleTileClick(event) {
   }
   // Middle Click
   else if (event.which === 2) {
-    let { isFlagged, isHidden, isMined, nearMines } = _getTileStatuses(tile);
-    if (isHidden || nearMines == 0) {
+    let { isHidden, nearMines, nearFlags } = _getTileStatuses(tile);
+    if (isHidden || nearMines === 0 || nearFlags < nearMines) {
       return;
     }
     let neighbors = _getNeighbors(tile);
@@ -286,10 +292,11 @@ function handleTileClick(event) {
     }
     if (!isFlagged) {
       tile.classList.add(GAME_SPRITES.FLAG);
-      GAME_SESSION.FLAGS_PLANTED++;
+      GAME_SESSION.FLAGS_PLANTED.push(tile.id);
     } else {
       tile.classList.remove(GAME_SPRITES.FLAG);
-      GAME_SESSION.FLAGS_PLANTED--;
+      let index = GAME_SESSION.FLAGS_PLANTED.indexOf(tile.id);
+      GAME_SESSION.FLAGS_PLANTED.splice(index, 1);
     }
   }
   updateMinesCounter();
@@ -323,6 +330,7 @@ function updateTimer() {
 }
 function updateMinesCounter() {
   let MinesLeftField = GAME_ENTITIES.getMinesLeftField();
-  let minesLeft = GAME_SESSION.MINES_PLANTED - GAME_SESSION.FLAGS_PLANTED;
+  let minesLeft =
+    GAME_SESSION.MINES_PLANTED - GAME_SESSION.FLAGS_PLANTED.length;
   MinesLeftField.innerHTML = minesLeft >= 0 ? minesLeft : 0;
 }
