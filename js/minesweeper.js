@@ -1,47 +1,79 @@
-let time = 0;
 const GAME_STONES = {
+  ELEMENT_CONTAINER: 'div',
   ELEMENT_CANVAS_NAME: 'minefield',
-  DIFFICULT_ELEMENT: 'difficulty',
+  ELEMENT_DIFFICULT_NAME: 'difficulty',
+  ELEMENT_FLAG_COUNT_NAME: 'flagCount',
+  ELEMENT_TIMER_NAME: 'timer',
+  ELEMENT_SMILE_NAME: 'smiley',
+  TIME_MS: 1000,
   MODE_EASY: { columns: 9, rows: 9, mines: 10 },
   MODE_MEDIUM: { columns: 16, rows: 16, mines: 40 },
   MODE_HARD: { columns: 30, rows: 16, mines: 99 },
 };
 
 const GAME_SPRITES = {
+  SIZE_UNIT: 'px',
   HIDDEN: 'hidden',
   FLAG: 'flag',
+  TILE: 'tile',
   TILE_NUMBER_PREFIX: 'tile_',
-  MINE_HIT: 'mine',
+  HIDDEN: 'hidden',
+  MINE_HIT: 'mine_hit',
+  FACE_LIMBO: 'face_limbo',
+  FACE_DOWN: 'face_down',
+  FACE_LOSE: 'face_lose',
+  FACE_WIN: 'face_win',
 };
 
-let GAME_SETTINGS = {
+let GAME_SESSION = {
   MODE_SELECTED: GAME_STONES.MODE_EASY,
   MINED_TILES: [],
+  STARTED: false,
+  TIMER_ID: null,
+  TIMER_INTERVAL: 0,
+  MINES_PLANTED: 0,
+  FLAGS_PLANTED: 0,
+  TILES_REVEALED: [],
 };
 
 let GAME_ENTITIES = {
-  getCanvas: () => document.getElementById(GAME_STONES.ELEMENT_CANVAS_NAME),
+  getCanvas: () => _getElement(GAME_STONES.ELEMENT_CANVAS_NAME),
+  getDifficult: () => _getElement(GAME_STONES.ELEMENT_DIFFICULT_NAME),
+  getTimeField: () => _getElement(GAME_STONES.ELEMENT_TIMER_NAME),
+  getSmiley: () => _getElement(GAME_STONES.ELEMENT_SMILE_NAME),
+  getMinesLeftField: () => _getElement(GAME_STONES.ELEMENT_FLAG_COUNT_NAME),
   getGridTiles: () => GAME_ENTITIES.getCanvas().children,
   getGridTile: index => GAME_ENTITIES.getCanvas().children[index],
+  getGameOverMessage: () =>
+    `<h3>Game Over</h3><h5>Score: ${GAME_SESSION.TIMER_INTERVAL} </h5>`,
+  getWinnerMessage: () =>
+    `<h3>You Dit it!</h3><h5>Score: ${GAME_SESSION.TIMER_INTERVAL} </h5>`,
 };
 
+function _getElement(element_name) {
+  return document.getElementById(element_name);
+}
 function _getRandomNumber(max, min = 0) {
   return Math.floor(Math.random() * (max - min)) + min;
 }
-
-/**
- * Clean up HMTL element name
- *
- * @param string html_element_name
- * @returns HTML element
- */
 function _gridCleanUp() {
+  if (GAME_SESSION.STARTED) {
+    GAME_SESSION.STARTED = false;
+    clearInterval(GAME_SESSION.TIMER_ID);
+    GAME_SESSION.TIMER_INTERVAL = 0;
+  }
+  updateTimer();
+  let { mines } = GAME_SESSION.MODE_SELECTED;
+  GAME_SESSION.MINES_PLANTED = mines;
+  GAME_SESSION.TILES_REVEALED = [];
+  GAME_SESSION.FLAGS_PLANTED = 0;
   let grid = GAME_ENTITIES.getCanvas();
   grid.innerHTML = '';
+  updateMinesCounter();
 }
 function _gridBuilder() {
   var grid = GAME_ENTITIES.getCanvas();
-  let { columns, rows } = GAME_SETTINGS.MODE_SELECTED;
+  let { columns, rows } = GAME_SESSION.MODE_SELECTED;
   let tile;
   let index = 0;
   for (var y = 0; y < rows; y++) {
@@ -59,17 +91,19 @@ function _gridModeler() {
   let width = parseInt(style.width.slice(0, -2));
   let height = parseInt(style.height.slice(0, -2));
   let grid = GAME_ENTITIES.getCanvas();
-  let { columns, rows } = GAME_SETTINGS.MODE_SELECTED;
-  grid.style.width = columns * width + 'px';
-  grid.style.height = rows * height + 'px';
+  let { columns, rows } = GAME_SESSION.MODE_SELECTED;
+  grid.style.width = columns * width + GAME_SPRITES.SIZE_UNIT;
+  grid.style.height = rows * height + GAME_SPRITES.SIZE_UNIT;
 }
 function _gridMinesGenerate() {
+  GAME_SESSION.MINED_TILES = [];
   let gridTiles = GAME_ENTITIES.getGridTiles();
-  let { mines: mineQuantity } = GAME_SETTINGS.MODE_SELECTED;
-  while (GAME_SETTINGS.MINED_TILES.length < mineQuantity) {
+  let { mines: mineQuantity } = GAME_SESSION.MODE_SELECTED;
+  GAME_SESSION.MINES_PLANTED = mineQuantity;
+  while (GAME_SESSION.MINED_TILES.length < mineQuantity) {
     let index = _getRandomNumber(gridTiles.length);
-    if (!GAME_SETTINGS.MINED_TILES.includes(index)) {
-      GAME_SETTINGS.MINED_TILES.push(GAME_SPRITES.TILE_NUMBER_PREFIX + index);
+    if (!GAME_SESSION.MINED_TILES.includes(index)) {
+      GAME_SESSION.MINED_TILES.push(GAME_SPRITES.TILE_NUMBER_PREFIX + index);
     }
   }
 }
@@ -79,12 +113,10 @@ function buildGrid() {
   _gridModeler();
   _gridMinesGenerate();
 }
-
 function createTile(x, y) {
-  var tile = document.createElement('div');
-
-  tile.classList.add('tile');
-  tile.classList.add('hidden');
+  var tile = document.createElement(GAME_STONES.ELEMENT_CONTAINER);
+  tile.classList.add(GAME_SPRITES.TILE);
+  tile.classList.add(GAME_SPRITES.HIDDEN);
 
   tile.addEventListener('auxclick', function (e) {
     e.preventDefault();
@@ -96,22 +128,33 @@ function createTile(x, y) {
 
   return tile;
 }
-
 function startGame() {
   buildGrid();
-  //startTimer();
+  smileyLimbo();
 }
-
 function smileyDown() {
-  var smiley = document.getElementById('smiley');
-  smiley.classList.add('face_down');
+  var smiley = GAME_ENTITIES.getSmiley();
+  smiley.classList.add(GAME_SPRITES.FACE_DOWN);
 }
-
+function smileyLose() {
+  var smiley = GAME_ENTITIES.getSmiley();
+  smiley.classList.add(GAME_SPRITES.FACE_LOSE);
+}
 function smileyUp() {
-  var smiley = document.getElementById('smiley');
-  smiley.classList.remove('face_down');
+  var smiley = GAME_ENTITIES.getSmiley();
+  smiley.classList.remove(GAME_SPRITES.FACE_DOWN);
 }
-
+function smileyWin() {
+  var smiley = GAME_ENTITIES.getSmiley();
+  smiley.classList.remove(GAME_SPRITES.FACE_LIMBO);
+  smiley.classList.add(GAME_SPRITES.FACE_WIN);
+}
+function smileyLimbo() {
+  var smiley = GAME_ENTITIES.getSmiley();
+  smiley.classList.remove(GAME_SPRITES.FACE_LOSE);
+  smiley.classList.remove(GAME_SPRITES.FACE_WIN);
+  smiley.classList.add(GAME_SPRITES.FACE_LIMBO);
+}
 function _getNeighbors(tile) {
   let me = tile.getBoundingClientRect();
   let midWidth = me.width / 2;
@@ -154,78 +197,132 @@ function _getNeighbors(tile) {
 function _getTileStatuses(tile) {
   let isFlagged = tile.classList.contains(GAME_SPRITES.FLAG);
   let isHidden = tile.classList.contains(GAME_SPRITES.HIDDEN);
-  let isMined = GAME_SETTINGS.MINED_TILES.includes(tile.id);
+  let isMined = GAME_SESSION.MINED_TILES.includes(tile.id);
   let nearMines = 0;
   _getNeighbors(tile).forEach(neighbor => {
-    if (GAME_SETTINGS.MINED_TILES.includes(neighbor.id)) {
+    if (neighbor && GAME_SESSION.MINED_TILES.includes(neighbor.id)) {
       nearMines++;
     }
   });
   return { isFlagged, isHidden, isMined, nearMines };
 }
-function _revealTile(tile) {
+function gameOver() {
+  GAME_SESSION.STARTED = false;
+  let grid = GAME_ENTITIES.getCanvas();
+  smileyLose();
+  grid.innerHTML += GAME_ENTITIES.getGameOverMessage();
+}
+function gameWin() {
+  if (!GAME_SESSION.STARTED) return;
+  let { columns, rows, mines } = GAME_SESSION.MODE_SELECTED;
+  let freeTiles = columns * rows - mines;
+  let isWinner = freeTiles === GAME_SESSION.TILES_REVEALED.length;
+  if (isWinner) {
+    GAME_SESSION.STARTED = false;
+    let grid = GAME_ENTITIES.getCanvas();
+    smileyWin();
+    grid.innerHTML += GAME_ENTITIES.getWinnerMessage();
+  }
+}
+function easyStartNeeded(isMined, nearMines) {
+  return GAME_SESSION.TILES_REVEALED.length === 0 && (isMined || nearMines > 0);
+}
+function _revealTile(tile, rootId) {
+  startTimerManager();
   let { isFlagged, isHidden, isMined, nearMines } = _getTileStatuses(tile);
-  if (!isHidden || isFlagged) {
+  if (isFlagged) {
     return;
   }
-  if (isMined) {
-    tile.classList.add(GAME_SPRITES.MINE_HIT);
-  } else if (nearMines > 0) {
-    tile.classList.add(GAME_SPRITES.TILE_NUMBER_PREFIX + nearMines);
-  }
-  tile.classList.remove(GAME_SPRITES.HIDDEN);
-}
+  if (easyStartNeeded(isMined, nearMines)) {
+    do {
+      _gridMinesGenerate();
+      reloadedStatus = _getTileStatuses(tile);
+    } while (easyStartNeeded(reloadedStatus.isMined, reloadedStatus.nearMines));
+  } else {
+    if (isMined && tile.id === rootId) {
+      tile.classList.add(GAME_SPRITES.MINE_HIT);
+      gameOver();
+      return;
+    } else if (isHidden && nearMines === 0) {
+      tile.classList.remove(GAME_SPRITES.HIDDEN);
+      _getNeighbors(tile).forEach(nt => _revealTile(nt, rootId));
+    } else if (nearMines > 0) {
+      tile.classList.add(GAME_SPRITES.TILE_NUMBER_PREFIX + nearMines);
+    }
 
+    gameWin();
+  }
+  tileRevealedCounter(tile);
+}
+function tileRevealedCounter(tile) {
+  tile.classList.remove(GAME_SPRITES.HIDDEN);
+  if (!GAME_SESSION.TILES_REVEALED.includes(tile.id)) {
+    GAME_SESSION.TILES_REVEALED.push(tile.id);
+  }
+}
 function handleTileClick(event) {
+  let tile = event.currentTarget;
   // Left Click
   if (event.which === 1) {
-    let tile = event.currentTarget;
-    _revealTile(tile);
+    _revealTile(tile, tile.id);
   }
   // Middle Click
   else if (event.which === 2) {
-    let tile = event.currentTarget;
+    let { isFlagged, isHidden, isMined, nearMines } = _getTileStatuses(tile);
+    if (isHidden || nearMines == 0) {
+      return;
+    }
     let neighbors = _getNeighbors(tile);
     neighbors.push(tile);
     neighbors.forEach(neighbor => {
-      _revealTile(neighbor);
+      _revealTile(neighbor, neighbor.id);
     });
   }
   // Right Click
   else if (event.which === 3) {
-    let tile = event.currentTarget;
     let { isFlagged, isHidden } = _getTileStatuses(tile);
     if (!isHidden) {
       return;
     }
     if (!isFlagged) {
       tile.classList.add(GAME_SPRITES.FLAG);
+      GAME_SESSION.FLAGS_PLANTED++;
     } else {
       tile.classList.remove(GAME_SPRITES.FLAG);
+      GAME_SESSION.FLAGS_PLANTED--;
     }
   }
+  updateMinesCounter();
 }
-
-/**
- * Update game difficult
- */
 function setDifficulty() {
-  var difficultyFieldName = GAME_STONES.DIFFICULT_ELEMENT;
-  var difficultySelector = document.getElementById(difficultyFieldName);
-  var difficulty = difficultySelector.value;
-  GAME_SETTINGS.MODE_SELECTED = GAME_STONES[difficulty];
+  var difficultyField = GAME_ENTITIES.getDifficult();
+  var difficulty = difficultyField.value;
+  GAME_SESSION.MODE_SELECTED = GAME_STONES[difficulty];
+  updateMinesCounter();
 }
-
-function startTimer() {
-  timeValue = 0;
-  window.setInterval(onTimerTick, 1000);
+function startTimerManager() {
+  if (!GAME_SESSION.STARTED) {
+    GAME_SESSION.STARTED = true;
+    GAME_SESSION.TIMER_INTERVAL = 0;
+    GAME_SESSION.TIMER_ID = window.setInterval(
+      onTimerTick,
+      GAME_STONES.TIME_MS
+    );
+  }
 }
-
 function onTimerTick() {
-  timeValue++;
+  GAME_SESSION.TIMER_INTERVAL++;
   updateTimer();
 }
-
 function updateTimer() {
-  document.getElementById('timer').innerHTML = timeValue;
+  if (!GAME_SESSION.STARTED) {
+    return;
+  }
+  let timeField = GAME_ENTITIES.getTimeField();
+  timeField.innerHTML = GAME_SESSION.TIMER_INTERVAL;
+}
+function updateMinesCounter() {
+  let MinesLeftField = GAME_ENTITIES.getMinesLeftField();
+  let minesLeft = GAME_SESSION.MINES_PLANTED - GAME_SESSION.FLAGS_PLANTED;
+  MinesLeftField.innerHTML = minesLeft >= 0 ? minesLeft : 0;
 }
