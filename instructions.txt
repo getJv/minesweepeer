@@ -15,7 +15,7 @@
             Medium - 16x16 grid, 40 mines.
             Hard - 30x16 grid, 99 mines.
             
-        - Adjacent is defined by the 8 tiles surrounding the target tile, on the diagonal, horizontal, and vertical planes. 
+        [DONE] - Adjacent is defined by the 8 tiles surrounding the target tile, on the diagonal, horizontal, and vertical planes. 
 
         [DONE] - A left click must reveal a tile, if not flagged.
         [DONE] - A right click must flag a tile or unflag a tile if already flagged.
@@ -31,7 +31,7 @@
         
         [DONE] - If a tile is revealed and is not adjacent to any mines, it will reveal all adjacent tiles. This includes adjacent tiles with numbers on them.
             
-        - The first tile clicked must not be a mine, nor adjacent to a mine. In other words it will have no number to display.
+        [DONE] - The first tile clicked must not be a mine, nor adjacent to a mine. In other words it will have no number to display.
 
         [DONE] - A timer will keep track of the how long the user has been playing. It begins ticking once the first tile is revealed.
             This is essentially the player score.
@@ -43,12 +43,12 @@
         [DONE] - When a player is actively playing and the mouse is down: the smiley will be in limbo (face_limbo).
 
         End Game Conditions
-        - When all of the non-mine tiles are revealed the game is over. A player does not need to flag all of the mines to win.
-            You must display the user's completion time as well as congratulate them on their victory.
-            The smiley will wear sunglasses when the player wins.
-        - When a player reveals a mine, the game is over.
-            You must inform the player they have lost.
-            The smiley will play dead when the player loses. 
+        [DONE] - When all of the non-mine tiles are revealed the game is over. A player does not need to flag all of the mines to win.
+            [DONE] - You must display the user's completion time as well as congratulate them on their victory.
+            [DONE] - The smiley will wear sunglasses when the player wins.
+        [DONE] - When a player reveals a mine, the game is over.
+            [DONE] - You must inform the player they have lost.
+            [DONE] - The smiley will play dead when the player loses. 
 
 
 	- Please do not submit hidden files (.idea, .DS_Store, Thumbs.db, etc) with your solution.
