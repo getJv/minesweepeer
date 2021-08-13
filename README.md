@@ -50,9 +50,11 @@ General Gameplay Requirements
 12. ✅  When a player is actively playing and the mouse is down: the smiley will be in limbo (face_limbo).
 
 End Game Conditions
+
 13. ✅  When all of the non-mine tiles are revealed the game is over. A player does not need to flag all of the mines to win.
   [DONE] - You must display the user's completion time as well as congratulate them on their victory.
   [DONE] - The smiley will wear sunglasses when the player wins.
+  
 14. ✅   When a player reveals a mine, the game is over.
   [DONE] - You must inform the player they have lost.
   [DONE] - The smiley will play dead when the player loses. 
