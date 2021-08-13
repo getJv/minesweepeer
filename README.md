@@ -1,4 +1,4 @@
-Minesweepeer Game Code Interview
+# Minesweepeer Game Code Interview
 
 
 ## Solution description
